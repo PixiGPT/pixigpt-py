@@ -153,9 +153,13 @@ class Client:
         data = {
             "assistant_id": request.assistant_id,
             "messages": [{"role": m.role, "content": m.content} for m in request.messages],
-            "temperature": request.temperature,
-            "max_tokens": request.max_tokens,
         }
+
+        # Only include if non-zero (server handles defaults)
+        if request.temperature > 0:
+            data["temperature"] = request.temperature
+        if request.max_tokens > 0:
+            data["max_tokens"] = request.max_tokens
         if request.enable_thinking is not None:
             data["enable_thinking"] = request.enable_thinking
 
@@ -246,14 +250,35 @@ class Client:
         return messages
 
     def create_run(
-        self, thread_id: str, assistant_id: str, enable_thinking: bool = True
+        self,
+        thread_id: str,
+        assistant_id: str,
+        temperature: float = 0.0,
+        max_tokens: int = 0,
+        enable_thinking: bool = True,
     ) -> Run:
-        """Create an async run."""
-        resp = self._request(
-            "POST",
-            f"/threads/{thread_id}/runs",
-            json={"assistant_id": assistant_id, "enable_thinking": enable_thinking},
-        )
+        """
+        Create an async run.
+
+        Args:
+            thread_id: Thread ID
+            assistant_id: Assistant ID
+            temperature: Temperature (0 = server default of 0.6)
+            max_tokens: Max tokens (0 = vLLM default)
+            enable_thinking: Enable chain of thought (default: True)
+        """
+        data = {
+            "assistant_id": assistant_id,
+            "enable_thinking": enable_thinking,
+        }
+
+        # Only include if > 0 (server handles defaults)
+        if temperature > 0:
+            data["temperature"] = temperature
+        if max_tokens > 0:
+            data["max_tokens"] = max_tokens
+
+        resp = self._request("POST", f"/threads/{thread_id}/runs", json=data)
         return Run(**resp)
 
     def get_run(self, thread_id: str, run_id: str) -> Run:

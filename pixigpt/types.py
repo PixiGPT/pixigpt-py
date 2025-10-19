@@ -16,8 +16,8 @@ class ChatCompletionRequest:
     """Request for chat completion."""
     assistant_id: str
     messages: List[Message]
-    temperature: float = 0.7
-    max_tokens: int = 2000
+    temperature: float = 0.0  # Server defaults to 0.6 if 0
+    max_tokens: int = 0       # Server omits if 0 (vLLM default)
     enable_thinking: Optional[bool] = None
 
 
