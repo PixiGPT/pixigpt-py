@@ -232,6 +232,51 @@ class Client:
             reasoning_content=reasoning_content,
         )
 
+    def create_messages_bulk(
+        self, thread_id: str, messages: List[dict]
+    ) -> List[ThreadMessage]:
+        """
+        Add multiple messages to a thread in one request.
+
+        Args:
+            thread_id: Thread ID
+            messages: List of dicts with 'role' and 'content' keys
+
+        Example:
+            >>> messages = [
+            ...     {"role": "user", "content": "Message 1"},
+            ...     {"role": "user", "content": "Message 2"},
+            ... ]
+            >>> client.create_messages_bulk(thread_id, messages)
+        """
+        resp = self._request(
+            "POST",
+            f"/threads/{thread_id}/messages/bulk",
+            json={"messages": messages},
+        )
+
+        result = []
+        for msg_data in resp["data"]:
+            # Extract reasoning if present
+            reasoning_content = None
+            if msg_data.get("content") and len(msg_data["content"]) > 0:
+                text_value = msg_data["content"][0].get("text", {}).get("value", "")
+                _, reasoning_content = self._extract_reasoning(text_value)
+
+            result.append(
+                ThreadMessage(
+                    id=msg_data["id"],
+                    object=msg_data["object"],
+                    created_at=msg_data["created_at"],
+                    thread_id=msg_data["thread_id"],
+                    role=msg_data["role"],
+                    content=[MessageContent(**c) for c in msg_data["content"]],
+                    reasoning_content=reasoning_content,
+                )
+            )
+
+        return result
+
     def list_messages(self, thread_id: str, limit: int = 20) -> List[ThreadMessage]:
         """List messages from a thread."""
         resp = self._request("GET", f"/threads/{thread_id}/messages?limit={limit}")
@@ -363,6 +408,22 @@ class Client:
     def delete_assistant(self, assistant_id: str) -> None:
         """Delete an assistant."""
         self._request("DELETE", f"/assistants/{assistant_id}")
+
+    def list_assistant_threads(
+        self, assistant_id: str, limit: int = 20
+    ) -> List[Thread]:
+        """
+        List all threads used by an assistant.
+
+        Args:
+            assistant_id: Assistant ID
+            limit: Maximum threads to return (default: 20)
+
+        Returns:
+            List of threads that have runs for this assistant
+        """
+        resp = self._request("GET", f"/assistants/{assistant_id}/threads?limit={limit}")
+        return [Thread(**t) for t in resp["data"]]
 
     def __enter__(self):
         """Context manager entry."""
