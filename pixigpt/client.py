@@ -199,6 +199,15 @@ class Client:
         resp = self._request("GET", f"/threads/{thread_id}")
         return Thread(**resp)
 
+    def list_threads(self) -> List[Thread]:
+        """List all API threads for the authenticated user."""
+        resp = self._request("GET", "/threads")
+        return [Thread(**t) for t in resp["data"]]
+
+    def delete_thread(self, thread_id: str) -> None:
+        """Delete a thread and all its messages."""
+        self._request("DELETE", f"/threads/{thread_id}")
+
     def create_message(self, thread_id: str, role: str, content: str) -> ThreadMessage:
         """Add a message to a thread."""
         resp = self._request(
