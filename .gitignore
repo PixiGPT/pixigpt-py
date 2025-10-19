@@ -1,0 +1,17 @@
+# Environment
+.env
+venv/
+env/
+
+# Build
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# Development
+todo.md
+.pytest_cache/
+.coverage
+publish.sh
