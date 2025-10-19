@@ -2,7 +2,7 @@
 
 import time
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import urljoin
 
 import requests
@@ -115,7 +115,7 @@ class Client:
             ) from e
 
     @staticmethod
-    def _extract_reasoning(content: str) -> tuple[str, Optional[str]]:
+    def _extract_reasoning(content: str) -> Tuple[str, Optional[str]]:
         """
         Extract chain of thought reasoning from content.
 
