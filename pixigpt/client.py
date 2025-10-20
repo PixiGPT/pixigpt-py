@@ -11,6 +11,8 @@ from urllib3.util.retry import Retry
 
 from .types import (
     Message,
+    ToolCall,
+    ToolCallFunction,
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatCompletionChoice,
@@ -144,39 +146,81 @@ class Client:
             >>> client = Client(api_key, base_url)
             >>> response = client.create_chat_completion(
             ...     ChatCompletionRequest(
-            ...         assistant_id="...",
-            ...         messages=[Message(role="user", content="Hello!")],
+            ...         messages=[
+            ...             Message(role="system", content="You are helpful"),
+            ...             Message(role="user", content="Hello!")
+            ...         ],
+            ...         assistant_id="...",  # Optional
             ...     )
             ... )
             >>> print(response.choices[0].message.content)
         """
-        data = {
-            "assistant_id": request.assistant_id,
-            "messages": [{"role": m.role, "content": m.content} for m in request.messages],
-        }
+        # Build messages with tool support
+        messages = []
+        for m in request.messages:
+            msg_dict = {"role": m.role, "content": m.content}
+            if m.tool_calls:
+                msg_dict["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in m.tool_calls
+                ]
+            if m.tool_call_id:
+                msg_dict["tool_call_id"] = m.tool_call_id
+            messages.append(msg_dict)
 
-        # Only include if non-zero (server handles defaults)
+        data = {"messages": messages}
+
+        # Optional fields
+        if request.assistant_id:
+            data["assistant_id"] = request.assistant_id
         if request.temperature > 0:
             data["temperature"] = request.temperature
         if request.max_tokens > 0:
             data["max_tokens"] = request.max_tokens
         if request.enable_thinking is not None:
             data["enable_thinking"] = request.enable_thinking
+        if request.tools:
+            data["tools"] = request.tools
 
         resp = self._request("POST", "/chat/completions", json=data)
 
-        # Parse response and extract reasoning
+        # Parse response (server now provides reasoning_content directly)
         choices = []
         for choice_data in resp["choices"]:
             msg_data = choice_data["message"]
-            content, reasoning = self._extract_reasoning(msg_data["content"])
+
+            # Parse tool calls if present
+            tool_calls = None
+            if "tool_calls" in msg_data and msg_data["tool_calls"]:
+                tool_calls = [
+                    ToolCall(
+                        id=tc["id"],
+                        type=tc["type"],
+                        function=ToolCallFunction(
+                            name=tc["function"]["name"],
+                            arguments=tc["function"]["arguments"],
+                        ),
+                    )
+                    for tc in msg_data["tool_calls"]
+                ]
 
             choices.append(
                 ChatCompletionChoice(
                     index=choice_data["index"],
-                    message=Message(role=msg_data["role"], content=content),
+                    message=Message(
+                        role=msg_data["role"],
+                        content=msg_data["content"],
+                        tool_calls=tool_calls,
+                    ),
                     finish_reason=choice_data["finish_reason"],
-                    reasoning_content=reasoning,
+                    reasoning_content=choice_data.get("reasoning_content"),
                 )
             )
 

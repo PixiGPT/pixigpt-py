@@ -10,7 +10,8 @@ Production-grade Python client for the [PixiGPT API](https://pixigpt.com).
 - 🎯 **Type Hints**: Full typing support for modern Python
 - 📦 **Minimal Dependencies**: Just `requests` + `urllib3`
 - 🔧 **OpenAI Compatible**: Familiar API surface
-- 🧠 **Reasoning Extraction**: Automatic CoT reasoning extraction
+- 🧠 **Chain of Thought**: Server-extracted CoT reasoning in `reasoning_content`
+- 🛠️ **Tool Calling**: Full OpenAI-compatible function calling support
 
 ## Installation
 
@@ -25,16 +26,27 @@ from pixigpt import Client, ChatCompletionRequest, Message
 
 client = Client("sk-proj-YOUR_API_KEY", "https://pixigpt.com/v1")
 
+# Option 1: With assistant personality
 response = client.create_chat_completion(
     ChatCompletionRequest(
-        assistant_id="your-assistant-id",
+        assistant_id="your-assistant-id",  # Optional
         messages=[Message(role="user", content="Hello!")],
+    )
+)
+
+# Option 2: Pure OpenAI mode (no assistant)
+response = client.create_chat_completion(
+    ChatCompletionRequest(
+        messages=[
+            Message(role="system", content="You are helpful"),
+            Message(role="user", content="Hello!"),
+        ],
     )
 )
 
 print(response.choices[0].message.content)
 
-# Access chain of thought reasoning (if present)
+# Access chain of thought reasoning (if enable_thinking=true)
 if response.choices[0].reasoning_content:
     print(f"Reasoning: {response.choices[0].reasoning_content}")
 ```
@@ -71,15 +83,16 @@ client = Client(
 ```python
 from pixigpt import ChatCompletionRequest, Message
 
+# Basic completion
 response = client.create_chat_completion(
     ChatCompletionRequest(
-        assistant_id=assistant_id,
+        assistant_id=assistant_id,  # Optional - omit for pure OpenAI mode
         messages=[
             Message(role="user", content="What's the weather?"),
         ],
         temperature=0.7,
         max_tokens=2000,
-        enable_thinking=True,  # Enable chain of thought
+        enable_thinking=True,  # Enable chain of thought (default: True)
     )
 )
 
@@ -87,9 +100,69 @@ response = client.create_chat_completion(
 print(response.choices[0].message.content)
 print(f"Tokens: {response.usage.total_tokens}")
 
-# Access reasoning (if enable_thinking=True)
+# Access reasoning (server-provided, automatically extracted from <think> tags)
 if response.choices[0].reasoning_content:
     print(f"Reasoning: {response.choices[0].reasoning_content}")
+```
+
+### Tool Calling (Function Calling)
+
+```python
+from pixigpt import ChatCompletionRequest, Message
+
+# Define tools (OpenAI format)
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "City name"}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+# Request with tools
+response = client.create_chat_completion(
+    ChatCompletionRequest(
+        messages=[
+            Message(role="system", content="You are helpful"),
+            Message(role="user", content="What's the weather in Paris?"),
+        ],
+        tools=tools,
+    )
+)
+
+# Check if model wants to call a tool
+if response.choices[0].finish_reason == "tool_calls":
+    for tool_call in response.choices[0].message.tool_calls:
+        print(f"Tool: {tool_call.function.name}")
+        print(f"Args: {tool_call.function.arguments}")
+
+        # Execute tool, then send result back
+        result = {"temperature": 18, "conditions": "cloudy"}
+
+        response = client.create_chat_completion(
+            ChatCompletionRequest(
+                messages=[
+                    Message(role="system", content="You are helpful"),
+                    Message(role="user", content="What's the weather in Paris?"),
+                    response.choices[0].message,  # Assistant's tool call
+                    Message(
+                        role="tool",
+                        content=json.dumps(result),
+                        tool_call_id=tool_call.id,
+                    ),
+                ],
+                tools=tools,
+            )
+        )
 ```
 
 ### Threads (Async with Memory)
@@ -169,24 +242,28 @@ except APIError as e:
 
 ## Chain of Thought Reasoning
 
-The client automatically extracts chain of thought reasoning from `<think>` or `<thinking>` tags:
+When `enable_thinking=True` (default), the server automatically extracts reasoning from `<think>` tags:
 
 ```python
 response = client.create_chat_completion(
     ChatCompletionRequest(
-        assistant_id=assistant_id,
-        messages=[Message(role="user", content="Explain quantum physics")],
-        enable_thinking=True,
+        messages=[
+            Message(role="system", content="You are helpful"),
+            Message(role="user", content="Explain quantum physics"),
+        ],
+        enable_thinking=True,  # Default: true
     )
 )
 
-# Main response (thinking tags removed)
+# Main response (thinking tags removed by server)
 print(response.choices[0].message.content)
 
-# Reasoning content (extracted from <think> tags)
+# Reasoning content (automatically extracted by vLLM, provided in separate field)
 if response.choices[0].reasoning_content:
     print(f"Chain of thought: {response.choices[0].reasoning_content}")
 ```
+
+**Note:** `reasoning_content` is provided directly by the server (vLLM extracts it). Both `content` and `reasoning_content` are automatically trimmed of whitespace. When thinking is enabled and `max_tokens` < 3000, it's automatically bumped to 3000 (CoT needs space).
 
 ## Examples
 

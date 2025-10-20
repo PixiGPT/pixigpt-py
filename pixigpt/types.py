@@ -5,20 +5,42 @@ from typing import List, Optional, Dict, Any
 
 
 @dataclass
+class ToolCallFunction:
+    """Function details within a tool call."""
+    name: str
+    arguments: str  # JSON string
+
+
+@dataclass
+class ToolCall:
+    """Tool call made by the assistant."""
+    id: str
+    type: str
+    function: ToolCallFunction
+
+
+@dataclass
 class Message:
     """Chat message."""
     role: str
     content: str
+    tool_calls: Optional[List[ToolCall]] = None
+    tool_call_id: Optional[str] = None  # For role="tool" messages
 
 
 @dataclass
 class ChatCompletionRequest:
-    """Request for chat completion."""
-    assistant_id: str
+    """Request for chat completion.
+
+    assistant_id is optional - if omitted, messages[0] must be a system message.
+    tools can be provided to override assistant's configured tools.
+    """
     messages: List[Message]
+    assistant_id: Optional[str] = None
     temperature: float = 0.0  # Server defaults to 0.6 if 0
     max_tokens: int = 0       # Server omits if 0 (vLLM default)
     enable_thinking: Optional[bool] = None
+    tools: Optional[List[Dict[str, Any]]] = None  # OpenAI-format tool definitions
 
 
 @dataclass
