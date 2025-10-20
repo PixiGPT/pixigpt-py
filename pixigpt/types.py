@@ -88,6 +88,38 @@ class MessageContent:
 
 
 @dataclass
+class MessageSource:
+    """Source attachment from tools like WebSearch, Fetch."""
+    id: str
+    tool_name: str
+    title: Optional[str] = None
+    url: Optional[str] = None
+    snippet: Optional[str] = None
+
+
+@dataclass
+class MessageMedia:
+    """Media attachment from DrawImage, EditImage, UserUpload."""
+    id: str  # ShortID
+    source: str
+    type: str  # image, audio
+    prompt: Optional[str] = None
+    description: Optional[str] = None
+    signed_url: str  # 24h temporary R2 signed URL
+
+
+@dataclass
+class MessageCode:
+    """Code execution result."""
+    id: str
+    language: str
+    code: str
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
+    execution_time_ms: Optional[int] = None
+
+
+@dataclass
 class ThreadMessage:
     """Message in a thread."""
     id: str
@@ -97,6 +129,10 @@ class ThreadMessage:
     role: str
     content: List[MessageContent]
     reasoning_content: Optional[str] = None  # Chain of thought reasoning
+    # Attachments from tool execution (Pixi tools only)
+    sources: Optional[List[MessageSource]] = None
+    media: Optional[List[MessageMedia]] = None
+    code: Optional[List[MessageCode]] = None
 
 
 @dataclass

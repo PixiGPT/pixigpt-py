@@ -187,6 +187,19 @@ print(f"assistant: {content}")
 # Access reasoning if available
 if completed_run.message.reasoning_content:
     print(f"Reasoning: {completed_run.message.reasoning_content}")
+
+# Access tool execution results (Pixi tools only - when assistant has tools_config=null)
+if completed_run.message.sources:
+    for src in completed_run.message.sources:
+        print(f"Source [{src.tool_name}]: {src.title} - {src.url}")
+
+if completed_run.message.media:
+    for media in completed_run.message.media:
+        print(f"Media [{media.source}]: {media.signed_url}")
+
+if completed_run.message.code:
+    for code in completed_run.message.code:
+        print(f"Code [{code.language}]: {code.stdout}")
 ```
 
 ### Assistants

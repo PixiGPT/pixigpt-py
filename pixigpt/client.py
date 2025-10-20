@@ -20,6 +20,9 @@ from .types import (
     Thread,
     ThreadMessage,
     MessageContent,
+    MessageSource,
+    MessageMedia,
+    MessageCode,
     Run,
     Assistant,
 )
@@ -388,6 +391,13 @@ class Client:
             # Parse content blocks
             if "content" in msg_data:
                 msg_data["content"] = [MessageContent(**c) for c in msg_data["content"]]
+            # Parse attachments (Pixi tools only)
+            if "sources" in msg_data and msg_data["sources"]:
+                msg_data["sources"] = [MessageSource(**s) for s in msg_data["sources"]]
+            if "media" in msg_data and msg_data["media"]:
+                msg_data["media"] = [MessageMedia(**m) for m in msg_data["media"]]
+            if "code" in msg_data and msg_data["code"]:
+                msg_data["code"] = [MessageCode(**c) for c in msg_data["code"]]
             resp["message"] = ThreadMessage(**msg_data)
         return Run(**resp)
 
