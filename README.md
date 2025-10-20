@@ -177,19 +177,16 @@ msg = client.create_message(thread.id, "user", "Hello!")
 # Run assistant
 run = client.create_run(thread.id, assistant_id, enable_thinking=True)
 
-# Wait for completion
+# Wait for completion (message included in response!)
 completed_run = client.wait_for_run(thread.id, run.id)
 
-# Get messages
-messages = client.list_messages(thread.id, limit=10)
+# Access the assistant's response directly
+content = completed_run.message.content[0].text["value"]
+print(f"assistant: {content}")
 
-for msg in messages:
-    content = msg.content[0].text["value"]
-    print(f"{msg.role}: {content}")
-
-    # Access reasoning
-    if msg.reasoning_content:
-        print(f"Reasoning: {msg.reasoning_content}")
+# Access reasoning if available
+if completed_run.message.reasoning_content:
+    print(f"Reasoning: {completed_run.message.reasoning_content}")
 ```
 
 ### Assistants

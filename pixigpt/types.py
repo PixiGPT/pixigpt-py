@@ -109,6 +109,7 @@ class Run:
     assistant_id: str
     status: str  # queued, in_progress, completed, failed
     model: str
+    message: Optional[ThreadMessage] = None  # Populated when completed
 
 
 @dataclass

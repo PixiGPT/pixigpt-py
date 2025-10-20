@@ -382,6 +382,13 @@ class Client:
     def get_run(self, thread_id: str, run_id: str) -> Run:
         """Get run status."""
         resp = self._request("GET", f"/threads/{thread_id}/runs/{run_id}")
+        # Parse message if present
+        if "message" in resp and resp["message"]:
+            msg_data = resp["message"]
+            # Parse content blocks
+            if "content" in msg_data:
+                msg_data["content"] = [MessageContent(**c) for c in msg_data["content"]]
+            resp["message"] = ThreadMessage(**msg_data)
         return Run(**resp)
 
     def wait_for_run(
