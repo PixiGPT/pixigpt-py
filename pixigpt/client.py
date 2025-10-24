@@ -25,6 +25,18 @@ from .types import (
     MessageCode,
     Run,
     Assistant,
+    VisionUsage,
+    VisionAnalyzeRequest,
+    VisionAnalyzeResponse,
+    VisionTagsRequest,
+    VisionTagsResponse,
+    VisionOCRRequest,
+    VisionOCRResponse,
+    VisionVideoRequest,
+    VisionVideoResponse,
+    ModerationTextRequest,
+    ModerationMediaRequest,
+    ModerationResponse,
 )
 from .errors import APIError
 
@@ -485,6 +497,143 @@ class Client:
         """
         resp = self._request("GET", f"/assistants/{assistant_id}/threads?limit={limit}")
         return [Thread(**t) for t in resp["data"]]
+
+    def analyze_image(self, request: VisionAnalyzeRequest) -> VisionAnalyzeResponse:
+        """
+        Analyze an image and return a detailed description.
+
+        The server downloads and preprocesses the image (resize, convert to JPEG).
+        For soulkyn.com URLs, Cloudflare bypass is automatically applied.
+
+        Example:
+            >>> response = client.analyze_image(
+            ...     VisionAnalyzeRequest(
+            ...         image_url="https://example.com/image.jpg",
+            ...         user_prompt="Describe this in detail.",
+            ...     )
+            ... )
+            >>> print(response.result)
+        """
+        data = {"image_url": request.image_url}
+        if request.user_prompt:
+            data["user_prompt"] = request.user_prompt
+
+        resp = self._request("POST", "/vision/analyze", json=data)
+        return VisionAnalyzeResponse(
+            result=resp["result"],
+            usage=VisionUsage(**resp["usage"]),
+        )
+
+    def analyze_image_for_tags(self, request: VisionTagsRequest) -> VisionTagsResponse:
+        """
+        Generate comma-separated tags for an image.
+
+        Returns short tags suitable for categorization and search.
+
+        Example:
+            >>> response = client.analyze_image_for_tags(
+            ...     VisionTagsRequest(image_url="https://example.com/image.jpg")
+            ... )
+            >>> print(response.result)
+        """
+        resp = self._request("POST", "/vision/tags", json={"image_url": request.image_url})
+        return VisionTagsResponse(
+            result=resp["result"],
+            usage=VisionUsage(**resp["usage"]),
+        )
+
+    def extract_text(self, request: VisionOCRRequest) -> VisionOCRResponse:
+        """
+        Perform OCR on an image and return extracted text.
+
+        Preserves structure (tables, lists, hierarchy) and uses high detail mode.
+
+        Example:
+            >>> response = client.extract_text(
+            ...     VisionOCRRequest(image_url="https://example.com/document.jpg")
+            ... )
+            >>> print(response.result)
+        """
+        resp = self._request("POST", "/vision/ocr", json={"image_url": request.image_url})
+        return VisionOCRResponse(
+            result=resp["result"],
+            usage=VisionUsage(**resp["usage"]),
+        )
+
+    def analyze_video(self, request: VisionVideoRequest) -> VisionVideoResponse:
+        """
+        Analyze a video and return a description of the content.
+
+        Videos must be under 10MB. The server performs size check via HEAD request.
+        For soulkyn.com URLs, Cloudflare bypass is automatically applied.
+
+        Example:
+            >>> response = client.analyze_video(
+            ...     VisionVideoRequest(
+            ...         video_url="https://example.com/video.mp4",
+            ...         user_prompt="Describe what happens.",
+            ...     )
+            ... )
+            >>> print(response.result)
+        """
+        data = {"video_url": request.video_url}
+        if request.user_prompt:
+            data["user_prompt"] = request.user_prompt
+
+        resp = self._request("POST", "/vision/video", json=data)
+        return VisionVideoResponse(
+            result=resp["result"],
+            usage=VisionUsage(**resp["usage"]),
+        )
+
+    def moderate_text(self, request: ModerationTextRequest) -> ModerationResponse:
+        """
+        Classify text content into 11 categories with confidence scores.
+
+        Categories: UNDERAGE_SEXUAL (priority), JAILBREAK, SUICIDE_SELF_HARM, PII,
+        COPYRIGHT_VIOLATION, VIOLENT, ILLEGAL_ACTS, UNETHICAL, HATE_SPEECH,
+        SEXUAL_ADULT, SAFE.
+
+        Score ranges: 1.00 = perfect match, 0.90-0.99 = very strong, 0.70-0.89 = strong,
+        0.50-0.69 = moderate, 0.00-0.49 = weak.
+
+        Example:
+            >>> response = client.moderate_text(
+            ...     ModerationTextRequest(prompt="text to moderate")
+            ... )
+            >>> print(f"{response.category} (score: {response.score})")
+        """
+        resp = self._request("POST", "/moderations", json={"prompt": request.prompt})
+        return ModerationResponse(
+            category=resp["category"],
+            score=resp["score"],
+            usage=VisionUsage(**resp["usage"]),
+        )
+
+    def moderate_media(self, request: ModerationMediaRequest) -> ModerationResponse:
+        """
+        Classify image or video content into 11 categories with confidence scores.
+
+        Same categories as moderate_text but with visual assessment.
+        SEXUAL_ADULT = visible genitals OR active sex acts only.
+        SAFE = cleavage, lingerie, bikinis, clothed, suggestive.
+
+        Example:
+            >>> response = client.moderate_media(
+            ...     ModerationMediaRequest(
+            ...         media_url="https://example.com/image.jpg",
+            ...         is_video=False,
+            ...     )
+            ... )
+            >>> print(f"{response.category} (score: {response.score})")
+        """
+        data = {"media_url": request.media_url, "is_video": request.is_video}
+        resp = self._request("POST", "/moderations/media", json=data)
+        return ModerationResponse(
+            category=resp["category"],
+            score=resp["score"],
+            usage=VisionUsage(**resp["usage"]),
+        )
 
     def __enter__(self):
         """Context manager entry."""

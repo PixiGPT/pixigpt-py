@@ -78,6 +78,66 @@ client = Client(
 
 ## API Methods
 
+### Vision & Moderation
+
+Image/video analysis and content moderation:
+
+```python
+from pixigpt import (
+    VisionAnalyzeRequest,
+    VisionTagsRequest,
+    VisionOCRRequest,
+    VisionVideoRequest,
+    ModerationTextRequest,
+    ModerationMediaRequest,
+)
+
+# Image analysis
+response = client.analyze_image(
+    VisionAnalyzeRequest(
+        image_url="https://example.com/image.jpg",
+        user_prompt="Describe this in detail.",
+    )
+)
+
+# Tag generation
+response = client.analyze_image_for_tags(
+    VisionTagsRequest(image_url="https://example.com/image.jpg")
+)
+
+# OCR text extraction
+response = client.extract_text(
+    VisionOCRRequest(image_url="https://example.com/document.jpg")
+)
+
+# Video analysis (< 10MB)
+response = client.analyze_video(
+    VisionVideoRequest(
+        video_url="https://example.com/video.mp4",
+        user_prompt="Describe what happens.",
+    )
+)
+
+# Text moderation (11 categories)
+response = client.moderate_text(
+    ModerationTextRequest(prompt="text to moderate")
+)
+# Returns: category (SAFE, SEXUAL_ADULT, UNDERAGE_SEXUAL, etc.) + score (0.0-1.0)
+
+# Image/video moderation
+response = client.moderate_media(
+    ModerationMediaRequest(
+        media_url="https://example.com/image.jpg",
+        is_video=False,
+    )
+)
+```
+
+**Moderation Categories:**
+- **CRITICAL:** `UNDERAGE_SEXUAL` (priority), `JAILBREAK`, `SUICIDE_SELF_HARM`, `PII`, `COPYRIGHT_VIOLATION`
+- **WARNING:** `VIOLENT`, `ILLEGAL_ACTS`, `UNETHICAL`, `HATE_SPEECH`
+- **ALLOWED:** `SEXUAL_ADULT` (explicit only), `SAFE` (everything else)
+
 ### Chat Completions (Stateless)
 
 ```python
@@ -280,6 +340,7 @@ if response.choices[0].reasoning_content:
 See [examples/](examples/) directory:
 - [`chat.py`](examples/chat.py) - Simple chat completion
 - [`thread.py`](examples/thread.py) - Multi-turn conversation
+- [`vision.py`](examples/vision.py) - Vision analysis and content moderation
 
 ```bash
 # Install dev dependencies
@@ -287,6 +348,7 @@ pip install pixigpt[dev]
 
 # Run examples
 python examples/chat.py
+python examples/vision.py
 ```
 
 ## Testing

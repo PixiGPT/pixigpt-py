@@ -103,9 +103,9 @@ class MessageMedia:
     id: str  # ShortID
     source: str
     type: str  # image, audio
+    signed_url: str  # 24h temporary R2 signed URL
     prompt: Optional[str] = None
     description: Optional[str] = None
-    signed_url: str  # 24h temporary R2 signed URL
 
 
 @dataclass
@@ -157,3 +157,86 @@ class Assistant:
     name: str
     instructions: str
     tools_config: Optional[str] = None
+
+
+@dataclass
+class VisionUsage:
+    """Token usage for vision API calls."""
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
+@dataclass
+class VisionAnalyzeRequest:
+    """Request to analyze an image."""
+    image_url: str
+    user_prompt: Optional[str] = None
+
+
+@dataclass
+class VisionAnalyzeResponse:
+    """Response from image analysis."""
+    result: str
+    usage: VisionUsage
+
+
+@dataclass
+class VisionTagsRequest:
+    """Request to generate tags for an image."""
+    image_url: str
+
+
+@dataclass
+class VisionTagsResponse:
+    """Response from tag generation."""
+    result: str
+    usage: VisionUsage
+
+
+@dataclass
+class VisionOCRRequest:
+    """Request to extract text from an image."""
+    image_url: str
+
+
+@dataclass
+class VisionOCRResponse:
+    """Response from OCR."""
+    result: str
+    usage: VisionUsage
+
+
+@dataclass
+class VisionVideoRequest:
+    """Request to analyze a video."""
+    video_url: str
+    user_prompt: Optional[str] = None
+
+
+@dataclass
+class VisionVideoResponse:
+    """Response from video analysis."""
+    result: str
+    usage: VisionUsage
+
+
+@dataclass
+class ModerationTextRequest:
+    """Request to moderate text."""
+    prompt: str
+
+
+@dataclass
+class ModerationMediaRequest:
+    """Request to moderate image/video."""
+    media_url: str
+    is_video: bool
+
+
+@dataclass
+class ModerationResponse:
+    """Response from moderation."""
+    category: str
+    score: float
+    usage: VisionUsage
