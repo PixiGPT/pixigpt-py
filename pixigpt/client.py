@@ -37,6 +37,14 @@ from .types import (
     ModerationTextRequest,
     ModerationMediaRequest,
     ModerationResponse,
+    EmbeddingRequest,
+    EmbeddingResponse,
+    EmbeddingData,
+    EmbeddingUsage,
+    RerankRequest,
+    RerankResponse,
+    RerankData,
+    RerankUsage,
 )
 from .errors import APIError
 
@@ -633,6 +641,81 @@ class Client:
             category=resp["category"],
             score=resp["score"],
             usage=VisionUsage(**resp["usage"]),
+        )
+
+    def create_embedding(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        """Generate embeddings for one or more text inputs.
+
+        Args:
+            request: EmbeddingRequest with input text(s)
+
+        Returns:
+            EmbeddingResponse with 1024-dimensional vectors
+
+        Example:
+            >>> response = client.create_embedding(
+            ...     EmbeddingRequest(
+            ...         input=["Text to embed", "Another text"],
+            ...     )
+            ... )
+            >>> print(f"Generated {len(response.data)} embeddings")
+        """
+        data = {"input": request.input}
+        if request.model:
+            data["model"] = request.model
+
+        resp = self._request("POST", "/embeddings", json=data)
+        return EmbeddingResponse(
+            object=resp["object"],
+            data=[
+                EmbeddingData(
+                    object=item["object"],
+                    embedding=item["embedding"],
+                    index=item["index"],
+                )
+                for item in resp["data"]
+            ],
+            usage=EmbeddingUsage(**resp["usage"]),
+        )
+
+    def rerank(self, request: RerankRequest) -> RerankResponse:
+        """Rerank documents by semantic relevance to a query.
+
+        Args:
+            request: RerankRequest with query and documents
+
+        Returns:
+            RerankResponse with reranked results sorted by relevance
+
+        Example:
+            >>> response = client.rerank(
+            ...     RerankRequest(
+            ...         query="machine learning",
+            ...         documents=["ML is cool", "Cats are fluffy"],
+            ...         top_k=2,
+            ...     )
+            ... )
+            >>> for result in response.results:
+            ...     print(f"[{result.relevance_score:.3f}] {result.document}")
+        """
+        data = {"query": request.query, "documents": request.documents}
+        if request.top_k is not None:
+            data["top_k"] = request.top_k
+        if request.model:
+            data["model"] = request.model
+
+        resp = self._request("POST", "/rerank", json=data)
+        return RerankResponse(
+            object=resp["object"],
+            results=[
+                RerankData(
+                    index=item["index"],
+                    document=item["document"],
+                    relevance_score=item["relevance_score"],
+                )
+                for item in resp["results"]
+            ],
+            usage=RerankUsage(**resp["usage"]),
         )
 
     def __enter__(self):

@@ -20,6 +20,10 @@ from .types import (
     ModerationTextRequest,
     ModerationMediaRequest,
     ModerationResponse,
+    EmbeddingRequest,
+    EmbeddingResponse,
+    RerankRequest,
+    RerankResponse,
 )
 from .errors import APIError, is_auth_error, is_rate_limit_error
 
@@ -44,6 +48,10 @@ __all__ = [
     "ModerationTextRequest",
     "ModerationMediaRequest",
     "ModerationResponse",
+    "EmbeddingRequest",
+    "EmbeddingResponse",
+    "RerankRequest",
+    "RerankResponse",
     "APIError",
     "is_auth_error",
     "is_rate_limit_error",

@@ -1,7 +1,7 @@
 """Type definitions for PixiGPT API."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 
 @dataclass
@@ -240,3 +240,66 @@ class ModerationResponse:
     category: str
     score: float
     usage: VisionUsage
+
+
+# Embeddings & Rerank API types
+
+@dataclass
+class EmbeddingUsage:
+    """Token usage for embeddings."""
+    prompt_tokens: int
+    total_tokens: int
+
+
+@dataclass
+class EmbeddingData:
+    """Single embedding data."""
+    object: str
+    embedding: List[float]
+    index: int
+
+
+@dataclass
+class EmbeddingRequest:
+    """Request to generate embeddings."""
+    input: Union[str, List[str]]
+    model: Optional[str] = None  # Ignored by server
+
+
+@dataclass
+class EmbeddingResponse:
+    """Response from embeddings API."""
+    object: str
+    data: List[EmbeddingData]
+    usage: EmbeddingUsage
+
+
+@dataclass
+class RerankUsage:
+    """Token usage for rerank."""
+    total_tokens: int
+
+
+@dataclass
+class RerankData:
+    """Single reranked result."""
+    index: int
+    document: str
+    relevance_score: float
+
+
+@dataclass
+class RerankRequest:
+    """Request to rerank documents."""
+    query: str
+    documents: List[str]
+    top_k: Optional[int] = None  # Optional, defaults to all
+    model: Optional[str] = None  # Ignored by server
+
+
+@dataclass
+class RerankResponse:
+    """Response from rerank API."""
+    object: str
+    results: List[RerankData]
+    usage: RerankUsage
